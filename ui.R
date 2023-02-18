@@ -10,30 +10,68 @@ sidebar <- dashboardSidebar(
 body <- dashboardBody(tabItems(
   tabItem(tabName = "page1",
           fluidRow(
-            width = 12,
-            imageOutput("adidasLogo"),
-            style='width: 99.9%;margin:auto'
-          ),
-          fluidRow(
-            width = 12,
-          ),
-          fluidRow(
-            style='margin-top:70px;',
-            infoBox("TOTAL TRANSACTION", nrow(data), icon = icon("shopping-cart"), color = 'red', width = 4),
-            infoBox("TOTAL SALES", glue("USD {comma(total_sales)}"), icon = icon("money-bill"), color = 'black', width = 4),
-            infoBox("TOTAL PRODUCT SOLD", glue("{sum(data$`Units Sold`)} Item"), icon = icon("headset"), color = 'black', width = 4),
+            valueBox(nrow(data), 
+                     "Total Transaction", 
+                     icon = icon("file-invoice-dollar"), 
+                     color = 'aqua', 
+                     width = 4),
+            valueBox(glue("USD {comma(total_sales)}"), 
+                    "Total Sales",
+                    icon = icon("money-bill"), 
+                    color = 'aqua', 
+                    width = 4),
+            valueBox(glue("{sum(data$`Units Sold`)} Item"), 
+                     "Total Product Sold",
+                     icon = icon("cart-shopping"), 
+                     color = 'aqua', 
+                     width = 4),
           ),
           fluidRow(
             box(
-              width = 12
+              width = 6,
+              title = "Adidas Total Sales By Product Categories",
+              plotlyOutput(outputId = 'product_ranking_sales')
+            ),
+            box(
+              width = 6,
+              title = "Adidas Total Sold Unit By Product Categories",
+              plotlyOutput(outputId = 'product_ranking_sold')
             )
-          )
+          ),
+          fluidRow(
+            width = 12,
+            box(
+              width = 12,
+              selectInput(
+                inputId = 'select_year',
+                label = "Choose Year",
+                choices = unique(data$year_invoice)
+              ),
+            ),
+            box(
+              width = 12,
+              plotlyOutput(outputId = 'history_sales_month')
+            )
+          ),
+          fluidRow(
+            width = 12,
+            box(
+              width = 12,
+              leafletOutput(outputId = 'map_sales')
+            )
+          ),
   ),
   
   tabItem(tabName = "page2",
           fluidRow(
+            uiOutput('total_transaction_location'),
+            uiOutput('total_sales_location'),
+            uiOutput("total_sold_location")
+          ),
+          fluidRow(
             box(
               width = 12,
+              status = "info",
               column(
                 width = 4,
                 selectInput(
@@ -52,20 +90,16 @@ body <- dashboardBody(tabItems(
               ),
             )),
           fluidRow(
-            uiOutput('total_transaction_location'),
-            uiOutput('total_sales_location'),
-            uiOutput("total_sold_location")
-          ),
-          fluidRow(
             box(
               width = 4,
+              height = 500,
               title = "Market Share Retailer",
               plotOutput("market_share_pie")
             ),
             box(
               width = 8,
-              title = "Market Share Ranking",
-              
+              height = 500,
+              plotlyOutput(outputId = "market_share_ranking_retailer")
             )
           ),
           fluidRow(

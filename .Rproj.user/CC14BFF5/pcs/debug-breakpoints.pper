@@ -1,51 +1,5 @@
 {
     "debugBreakpointsState": {
-        "breakpoints": [
-            {
-                "id": 0,
-                "path": "~/Documents/datascience/algoritma/bootcamp/LBB-IP/adidas_analytic_US_Dashboard/ui.R",
-                "line_number": 14,
-                "function_steps": "",
-                "function_name": "toplevel",
-                "state": 1,
-                "editor_state": 1,
-                "editor_line_number": 14,
-                "is_pending_debug_completion": false,
-                "needs_updated_steps": false,
-                "type": 1,
-                "is_package_breakpoint": false,
-                "package_name": ""
-            },
-            {
-                "id": 1,
-                "path": "~/Documents/datascience/algoritma/bootcamp/LBB-IP/adidas_analytic_US_Dashboard/ui.R",
-                "line_number": 15,
-                "function_steps": "",
-                "function_name": "toplevel",
-                "state": 1,
-                "editor_state": 1,
-                "editor_line_number": 15,
-                "is_pending_debug_completion": false,
-                "needs_updated_steps": false,
-                "type": 1,
-                "is_package_breakpoint": false,
-                "package_name": ""
-            },
-            {
-                "id": 2,
-                "path": "~/Documents/datascience/algoritma/bootcamp/LBB-IP/adidas_analytic_US_Dashboard/ui.R",
-                "line_number": 10,
-                "function_steps": "",
-                "function_name": "toplevel",
-                "state": 1,
-                "editor_state": 1,
-                "editor_line_number": 10,
-                "is_pending_debug_completion": false,
-                "needs_updated_steps": false,
-                "type": 1,
-                "is_package_breakpoint": false,
-                "package_name": ""
-            }
-        ]
+        "breakpoints": []
     }
 }

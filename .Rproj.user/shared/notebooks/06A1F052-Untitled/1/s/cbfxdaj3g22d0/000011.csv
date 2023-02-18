@@ -1,3 +1,0 @@
-"0","market_share <- data %>% group_by(Retailer) %>% "
-"0","  summarise(total_sales_retailer = sum(`Total Sales`)) %>% "
-"0","  arrange(-total_sales_retailer)"
