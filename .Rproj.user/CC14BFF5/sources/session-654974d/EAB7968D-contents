@@ -1,0 +1,71 @@
+library(shinydashboard)
+library(shiny)
+library(DT)
+# Import libraries
+library(dplyr)
+library(ggplot2)
+library(ggpubr)
+library(scales)
+library(glue)
+library(plotly)
+library(lubridate)
+
+# Settingan Agar tidak muncul numeric value
+options(scipen = 9999)
+
+# read data
+vids <- read.csv("data_input/youtubetrends.csv",
+                 encoding = "latin1",
+                 stringsAsFactors = TRUE)
+
+# cleansing data
+vids_clean <- vids %>% 
+  # deselect beberapa kolom
+  select(-c(10:12)) %>% 
+  
+  mutate(
+    # mengubah tipe data
+    trending_date = ymd(trending_date),
+    publish_time = ymd_hms(publish_time),
+    title = as.character(title),
+    channel_title = as.character(channel_title), 
+    
+    # menambahkan kolom baru
+    likesp = likes/views,
+    dislikesp = dislikes/views,
+    commentp = comment_count/views
+  )
+
+
+
+# Please type your code here
+# Preparation data vids_count
+vids_count <- vids_clean %>% 
+  group_by(category_id) %>% 
+  summarise(count = n()) %>% # membuat kolom baru berdasarkan perhitungan frekuensi category_id nya
+  ungroup() %>% 
+  arrange(-count)
+
+vids_count <- vids_count %>% 
+  mutate(label = glue(
+    "Category: {category_id}
+    Video Count: {count}"
+  ))
+
+# Pembuatan plot statis 1
+plot1 <- ggplot(data = vids_count, aes(x = count, 
+                                       y = reorder(category_id, count), # reorder(A, berdasarkan B)
+                                       text = label)) + # menambahkan tooltip dari glue
+  geom_col(aes(fill = count)) +
+  scale_fill_gradient(low="red", high="black") +
+  labs(title = "Trending Categories on YouTube US 2017",
+       x = "Video Count",
+       y = NULL) +
+  theme_minimal() +
+  theme(legend.position = "none") 
+
+
+# Pembuatan plot interaktif 1
+plot1plotly <- ggplotly(plot1, tooltip = "text")
+
+category_list <- levels(vids_clean$category_id)

@@ -1,0 +1,1 @@
+"0","data <- read_excel('Adidas US Sales Datasets.xlsx', skip = 2)"

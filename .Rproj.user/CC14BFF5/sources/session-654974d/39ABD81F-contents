@@ -1,0 +1,1026 @@
+---
+title: "Inclass Interactive Plotting"
+author: "Ramdhina Finita"
+date: "`r format(Sys.Date(), '%B %e, %Y')`"
+output:
+  html_document:
+    theme: sandstone
+    highlight: breezedark
+    toc: true
+    toc_float:
+      collapsed: false
+    df_print: paged
+---
+
+```{=html}
+<style>
+body {
+text-align: justify}
+</style>
+```
+
+```{r setup, include=FALSE}
+# clear-up the environment
+rm(list = ls())
+
+# chunk options
+knitr::opts_chunk$set(
+  message = FALSE,
+  warning = FALSE,
+  fig.align = "center",
+  comment = "#>"
+)
+# Settingan Agar tidak muncul numeric value
+options(scipen = 9999)
+```
+
+# Course Map
+
+```{r echo=FALSE, out.width="100%"}
+knitr::include_graphics("assets/Interactive Plotting.png")
+```
+
+# Introduction
+
+```{r}
+# import library
+library(ggplot2) # membuat plot statis 
+library(ggpubr) # export plot statis
+library(scales) # mengatur skala plot
+library(glue) # setting teks pada tooltip
+library(plotly) # membuat plot interaktif
+```
+
+# Data Transformation using `dplyr`
+
+```{r}
+# install.packages("dplyr")
+library(dplyr)
+```
+
+**🕵 `dplyr`** merupakan library/package khusus yang mempermudah kita dalam melakukan data wrangling/cleaning/transformation/eksplorasi. Tahapan data wrangling yang umum:
+
+-   Cek data
+-   Seleksi kolom
+-   Filter baris
+-   Membuat/mengubah kolom
+-   Agregasi data
+-   Mengurutkan data
+
+## Load Data
+
+**Membaca data dengan read.csv()**
+
+```{r}
+# Please type your code here
+vids <- read.csv("data_input/youtubetrends.csv", stringsAsFactors = TRUE)
+vids
+```
+
+## 🛠 `glimpse`: cek data
+
+```{r eval=FALSE}
+# Please type your code here
+# base -> menggunakan str()
+str(vids)
+```
+
+```{r}
+# Please type your code here
+# dplyr -> menggunakan glimpse()
+glimpse(vids)
+```
+
+Informasi: jumlah baris - kolom, nama kolom, tipe data, isi kolom
+
+Penjelasan mengenai 16 kolom dalam dataframe:
+
+-   `trending_date`: tanggal trending (format: YY.MM.DD)
+-   `title`: judul video
+-   `channel_title`: nama channel Youtube
+-   `category_id`: kategori video
+-   `publish_time`: tanggal upload video (format: YYYY-MM-DD-HH-MM-SS)
+-   `views`: jumlah views dalam video tersebut
+-   `likes`: jumlah likes dalam video tersebut
+-   `dislikes`: jumlah dislikes dalam video tersebut
+-   `comment_count` jumlah komentar
+-   `comment_disabled`: apakah kolom komentar tidak diaktifkan
+-   `rating_disabled`: apakah rating video tidak diaktifkan
+-   `video_error_or_removed`: apakah video dihapus
+-   `publish_hour`: jam video tersebut dipublish
+-   `publish_when`: range video tersebut dipublish
+-   `publish_wday`: hari video tersebut dipublish
+-   `timetotrend`: rentang waktu video tersebut dari dipublish sampai menjadi trending
+
+## 🛠 `select`: seleksi kolom
+
+❓Misalkan kita sebagai tim data diminta untuk mengambil data video youtube yang hanya berisikan kolom `trending_date` & `title` saja, Bagaimana cara kita melakukannya?:
+
+```{r eval=FALSE}
+# Run code below
+# base
+vids[ ,c("trending_date", "title")]
+```
+
+**dplyr: `select(.data, kolom yg ingin diambil/dibuang)`**
+
+```{r}
+# Please type your code here
+# dplyr
+select(.data = vids, 
+       "trending_date", title, category_id)
+
+```
+
+❓Misalkan kita ingin buang kolom `comments_disabled`, `ratings_disabled`, dan `video_error_or_removed` karena tidak digunakan:
+
+```{r eval=FALSE}
+# Run code below
+# base: harus menggunakan index
+vids[ ,-c(10,11,12)]
+```
+
+```{r}
+# Please type your code here
+# dplyr
+# cara 1
+select(.data = vids,
+       -comments_disabled,
+       -ratings_disabled,
+       -video_error_or_removed)
+# cara 2
+select(.data = vids,
+       -c(comments_disabled, ratings_disabled,video_error_or_removed))
+```
+
+## 🛠 `filter`: filter baris
+
+❓Misalkan kita ingin mengambil video dari kategori *"Gaming"* dan yang memiliki views lebih dari 1 juta.
+
+```{r eval=FALSE}
+# Run code below
+# base
+vids[vids$category_id %in% "Gaming" & vids$views > 1000000, ]
+```
+
+```{r}
+# Please type your code here
+# dplyr
+filter(.data = vids,
+       category_id == "Gaming" | category_id == "Music" |
+       views > 1e6)
+```
+
+```{r}
+filter(.data = vids,
+       category_id %in% c("Gaming","Music"),
+       views > 1e6)
+```
+
+
+Additional Notes:
+
+-   Pada fungsi filter(), kita tidak menuliskan object data karena sudah diletakan pada parameter `.data =`
+-   Tanda koma `(,)` pada fungsi filter sama seperti logikal operator `&`
+
+## 🛠 `mutate`: memodifikasi kolom (ubah tipe, menambahkan kolom baru, mengganti informasi suatu kolom)
+
+```{r eval=FALSE}
+# Run code below
+# base: mengubah tipe data kolom `title`
+vids$title <- as.character(vids$title)
+```
+
+**dplyr: `mutate(data, nama kolom = isi kolom)`**
+
+```{r}
+# Please type your code here
+# dplyr
+mutate(.data = vids,
+       title = as.character(title),
+       channel_title = as.character(channel_title))
+
+```
+
+## Piping `%>%`
+
+Simbol `%>%` disebut sebagai `Piping` digunakan untuk menyambungkan proses yang **sequential** atau berurutan. Untuk lebih memahaminya, mari menggunakan analogi :
+
+**Shortcut Piping**: `CTRL+ SHIFT + M` / `CMD + SHIFT + M`
+
+**Piping** membuat penggabungan tahapan wrangling di atas menjadi lebih mudah:
+
+❓**Contoh Kasus**
+
+1.  Buang kolom `comments_disabled`, `ratings_disabled`, dan `video_error_or_removed`
+2.  Ambil video dari kategori "**Gaming**" yang memiliki views lebih dari 1 juta.
+
+```{r}
+# Please type your code here
+# base
+vids_temp <- vids[,-c(10:12)]
+vids_gaming <- vids_temp[vids_temp$category_id %in% "Gaming" & vids_temp$views > 1e6, ]
+
+head(vids_gaming)
+```
+
+```{r}
+# dplyr
+vids %>% 
+  select(-c(10:12)) %>% 
+  filter(category_id %in% "Gaming",
+         views > 1e6)
+
+```
+Note:
+Minus dari dplyr -> tidak bisa tab saat pilih kolom
+Kelebihan dplyr -> kita tidak perlu melakukan assign pada object-object
+
+
+```{r}
+# Please type your code here
+# cek data 
+glimpse(vids_gaming)
+
+```
+
+
+## 🏄️ Dive Deeper!
+
+> Misalkan untuk kebutuhan analisis lanjutan kita perlu mempersiapkan data terlebih dahulu. Kita ingin menganalisis **video** dan **channel youtube** yang trending dan mencari tahu **durasi yang mereka butuhkan hingga bisa trending**. Analisis hanya untuk kategori **Music** saja.
+
+Sajikan data yang dibutuhkan:
+
+```{r}
+# Please run the code down below
+music_vid_trend  <- vids %>% 
+  select(c(title,channel_title,timetotrend, category_id)) %>% 
+  filter(category_id %in% "Music")
+
+music_vid_trend
+```
+
+## Data Cleansing
+
+-   Sebagai tahapan data wrangling di awal, kita akan buang kolom `comments_disabled`, `ratings_disabled`, dan `video_error_or_removed` karena tidak digunakan.
+
+-   Kemudian **memperbaiki tipe data** pada kolom:
+    -   trending_date, publish_time -> date & datetime (POSIXct)
+    -   title, channel_title -> character
+
+-   Kemudian coba **buat kolom** baru berupa:
+    -   buat kolom `likesp` (likes per view)
+    -   buat kolom `dislikesp` (dislikes per view)
+    -   buat kolom `commentp` (comment per view)
+
+Kemudian simpan ke nama objek `vids_clean`:
+
+> Tips: ketika melakukan cleansing data sebaiknya data disimpan dengan object yang berbeda.
+
+```{r}
+vids %>% head()
+```
+
+```{r}
+library(lubridate)
+vids_clean <- vids %>% 
+  # deselect beberapa kolom
+  select(-c(10:12)) %>% 
+  
+  mutate(
+    # mengubah tipe data
+    trending_date = ymd(trending_date),
+    publish_time = ymd_hms(publish_time),
+    title = as.character(title),
+    channel_title = as.character(channel_title), 
+    # menambahkan kolom baru
+    likesp = likes/views,
+    dislikesp = dislikes/views,
+    commentp = comment_count/views
+  )
+
+vids_clean
+```
+
+```{r}
+# Cek tipe data
+glimpse(vids_clean)
+```
+
+### Check missing value:
+
+```{r}
+# base
+colSums(is.na(vids_clean))
+```
+
+```{r}
+# dplyr
+vids_clean %>% is.na() %>% colSums()
+
+```
+
+> Insight: jadi, data vids_clean tidak memiliki missing values
+
+------------------------------------------------------------------------
+
+## 🛠 Agregasi Data
+
+Pada `dplyr`, kita dapat melakukan aggregasi data menggunakan `group_by()` dan `summarise()`, kemudian disempurnakan dengan fungsi penutup `ungroup()`.
+
+-   🛠 `group_by()`: melakukan pengelompokkan berdasarkan kolom tertentu, sehingga proses apapun setelahnya dilakukan berdasarkan pengelompokkan tersebut.
+-   🛠 `summarise()`: menghitung nilai statistik tertentu
+-   🛠 `ungroup()`: melepaskan pengelompokkan agar proses apapun setelahnya dilakukan untuk keseluruhan data.
+
+[Ilustrasi](https://docs.google.com/presentation/d/1jFZLPUeN7EDwK8MjxKzCsaNUjgzuwTk9I0M7yPqgq9U/edit?pli=1#slide=id.g10f92d5049a_0_165)
+
+❓Coba hitung **rata-rata viewer** video trending yang dimiliki oleh **tiap channel youtube**: Simpan keseluruhan objeknya akan dismpan dengan nama `vids_agg`
+
+```{r eval=FALSE}
+# base
+vids_agg <- aggregate(views ~ channel_title, 
+                      data = vids_clean, 
+                      FUN = mean)
+vids_agg
+```
+
+```{r}
+# dplyr
+vids_agg1 <- vids_clean %>% 
+  group_by(channel_title) %>% 
+  summarise(average = mean(views)) %>% 
+  ungroup()
+vids_agg1
+```
+```{r}
+vids_clean %>% 
+  group_by(channel_title) %>% 
+  summarise(average = mean(views)) 
+```
+-   ❓ Knowledge check: Bagaimana jika ingin menghitung rata-rata dan total views untuk setiap category
+
+```{r}
+# Please type your code here
+vids_clean %>% 
+  group_by(category_id) %>% 
+  summarise(average = mean(views),
+            Total = sum(views))
+
+```
+
+> 📌 Note: penggunaan `ungroup()` memang seringkali tidak terlihat efeknya, namun best practice setelah melakukan tahapan yang menggunakan grouping adalah melepas grouping tersebut menggunakan ungroup.
+
+❓ Periode (hari dan jam) kapan seorang YouTuber dapat mengupload videonya supaya memiliki views yang banyak (berdasarkan rata-rata)? Hanya untuk category **music**
+
+```{r}
+head(vids_clean)
+```
+
+
+```{r}
+# Please type your code here
+vids_agg <- vids_clean %>% 
+  filter(category_id %in% "Music") %>% 
+  group_by(publish_when, publish_wday) %>% 
+  summarise(Average = mean(views)) %>% 
+  ungroup()
+
+vids_agg
+```
+
+```{r}
+# cara tidak pakai ungroup
+vids_clean %>% 
+  filter(category_id %in% "Music") %>% 
+  group_by(publish_when, publish_wday) %>% 
+  summarise(Average = mean(views)) %>% 
+  top_n(1)
+```
+```{r}
+# cara pakai ungroup
+vids_clean %>% 
+  filter(category_id %in% "Music") %>% 
+  group_by(publish_when, publish_wday) %>% 
+  summarise(Average = mean(views)) %>% 
+  ungroup() %>% 
+  top_n(1)
+```
+> Note: Penggunaan ungroup() lebih terlihat jika kita melakukan groupby beberapa kolom kategorik seperti contoh diatas.
+
+
+## 🛠 `arrange`: mengurutkan data
+
+Urutkan channel youtube dengan rata-rata viewer tertinggi hingga terendah dari kategori **Music**:
+
+```{r eval=FALSE}
+# base
+vids_agg[order(vids_agg$Average, decreasing = T),]
+
+```
+
+```{r}
+# dplyr
+vids_agg %>%
+  arrange(-Average) # mengurutkan langsung berdasarkan kolom Average
+
+```
+
+> **📈 Insight** : 
+
+## 🏄️ Dive Deeper
+
+> ***Background case:*** Mas Kevin saat ini merupakan seorang Data Science Instructor di Algoritma. Namun, beliau ingin mengisi waktu luangnya menjadi seorang YouTuber. Akan tetapi, mas kevin masih bingung terkait konten apa yang sebaiknya dibuat agar videonya sering masuk ke jajaran trending Youtube.
+
+1.  Berdasarkan cerita diatas, buatlah rekomendasi **kategori video** apa yang sebaiknya Mas Kevin buat. Dengan kata lain, cari tahu banyaknya kemunculan (frekuensi) video yang trending dari setiap **kategori video.** Lalu, simpan ke objek bernama `vids_count`.
+
+    ***hint:***
+
+    -   Untuk melakukan perhitungan count, fungsi yang digunakan adalah `n()`
+    -   Urutkan hasilnya dengan mennggunakan fungsi `arrange()` dan jangan diambil nilai yang paling tingginya saja.
+
+```{r}
+# Please type your code here
+vids_count <- vids_clean %>% 
+  group_by(category_id) %>% 
+  summarise(count = n()) %>% # membuat kolom baru berdasarkan perhitungan frekuensi category_id nya
+  ungroup() %>% 
+  arrange(-count)
+  
+vids_count
+```
+```{r}
+print(sum(vids_count$count))
+print((736/2986)*100)
+```
+
+
+
+> **📈 Insight:** : Berdasarkan analisis dari data diatas, kita bisa rekomendasikan Mas Kevin untuk membuat video youtube bertema kategori Entertainment karena rata-rata data historikal menunjukkan bahwa video dengan tema Entertainment dari keseluruhan data yang ada tranding sekitar 24,65%.
+
+2.  Berdasarkan kategori video yang sudah direkomendasikan diatas, Mas Kevin ingin mengetahui beberapa channel terkenal yang nantinya akan digunakan sebagai referensi channel yang akan dibuat. Dengan kata lain, cari tahu **top 10 YouTube channel dengan jumlah rata-rata views tertinggi pada kategori video tersebut**. Lalu, simpan ke objek bernama `vids_top10`
+
+    ***hint:***
+    -   filter berdasarkan category dari insight no 1
+    -   groupby berdasarkan channel_title
+    -   rata-rata views
+    -   urutkan berdasarkan rata-rata views
+    -   ambil 10 channel teratas dengan (head)
+
+```{r}
+# Please type your code here
+vids_top10 <- vids_clean %>% 
+  filter(category_id %in% "Entertainment") %>% 
+  group_by(channel_title) %>% 
+  summarise(avg_views = mean(views)) %>% 
+  ungroup() %>% 
+  arrange(-avg_views) %>% 
+  head(10)
+
+vids_top10
+```
+
+# 📝 Summary DPLYR
+
+Cocokan fungsi dplyr dan tahapan data wrangling yang dilakukan pada list di bawah:
+
+-   cek data: c. glimpse
+-   seleksi kolom: a. select
+-   filter baris: f. filter
+-   mengubah/membuat kolom/mengubah tipe data: d. mutate
+-   agregasi data: b. group_by + summarise + ungroup
+-   mengurutkan data: e. arrange(desc())
+
+
+
+Untuk memudahkan pengolahan, kita juga bisa menggunakan **piping (%\>%)**
+
+**Referensi tambahan: [Official Documentation & Cheatsheet `dplyr`](https://dplyr.tidyverse.org/)**
+
+END OF DAY 1
+----
+START OF DAY 2
+
+# Interactive Plot using `plotly`
+
+**Plot interaktif membolehkan user untuk berinteraksi dengan plot** dan menghasilkan visualisasi yang lebih **ringkas, namun tetap informatif dan menarik**. Kita dapat menggunakan library `plotly` untuk membuat plot interaktif di R.
+
+**Link Official Plotly: <https://plotly.com/r/>**
+
+📊 Tahapan pembuatan interactive plot dengan mudah menggunakan `plotly`:
+
+1.  Business question
+2.  Siapkan data
+3.  Buat visualisasi plot statis dengan `ggplot()`
+4.  Ubah objek ggplot menjadi plotly dengan `ggplotly()`
+
+Sebelumnya kita telah menyiapkan 2 data hasil analisis (`vids_count` & `vids_top10`). Mari visualisasikan 2 data tersebut menggunakan interactive plotting.
+
+## 📈 Plot 1: Trending Category
+
+**1️⃣Bussiness Question:** Buatlah analisis mengenai kategori paling trending berdasarkan jumlah video yang masuk ke dalam jajaran video trending!
+
+**2️⃣Siapkan Data:** menggunakan object `vids_count`
+
+```{r}
+# Please type your code here
+vids_count
+```
+
+**3️⃣Visualisasi Plot Statis:**
+
+```{r}
+# Please type your code here
+# plot: ggplot2
+plot1 <- ggplot(data = vids_count, aes(x = count, 
+                              y = reorder(category_id, count))) + # reorder(A, berdasarkan B)
+  geom_col(aes(fill = count)) +
+  scale_fill_gradient(low="red", high="black") +
+  labs(title = "Trending Categories on YouTube US 2017",
+       x = "Video Count",
+       y = NULL) +
+  theme_minimal() +
+  theme(legend.position = "none") 
+
+plot1
+```
+
+
+**4️⃣Mengubah plot menjadi interaktif**
+
+Fungsi yang akan digunakan `ggplotly()`
+
+```{r}
+# Please type your code here
+ggplotly(plot1)
+```
+
+### Tooltip
+
+Untuk mempercantik plot interaktif, kita dapat menggunakan **tooltip**, yaitu informasi/label yang tertampilkan ketika user meng-hover plot. Kita dapat mempersiapkan informasi yang ingin ditampilkan pada kolom baru di data, kemudian meng-embed nya pada fungsi ggplotly.
+
+**Tahapan mengatur tooltip:**
+
+1.  Tambahkan kolom baru yang berisi informasi tulisan pada tooltip, dengan menggunakan fungsi `glue()` dai library glue.
+
+    > Fungsi `glue()` digunakan untuk menampilkan teks (character) yang bisa disisipkan dengan nilai yang dinamis (dengan cara memberikan kurung kurawal {})
+
+2.  Buat plot dengan menambahkan parameter `text` pada `aes()`
+
+3.  Menambahkan parameter `tootltip = "text"` pada saat `ggplotly()`
+
+Contoh penggunaan fungsi glue dari library `glue()`
+
+```{r}
+# contoh penggunaan fungsi glue dari library glue
+nama <- c("Fini", "Kevin", "Victor", "Ido", "Fiqey", "Cut")
+angka <- c(1:6)
+glue("Nama Instructor: {nama}, {angka}")
+```
+
+**1️⃣ Tambahkan kolom baru**
+
+Pada tahapan persiapan data, tambahkan kolom berisi informasi tulisan pada tooltip. Fungsi `glue()` digunakan untuk menampilkan nilai pada kolom.
+
+```{r}
+# Please type your code here
+# menambahkan kolom berisi informasi tooltip
+vids_count <- vids_count %>% 
+  mutate(label = glue(
+    "Category: {category_id}
+    Video Count: {count}"
+  ))
+vids_count
+```
+
+**2️⃣** **Membuat Ulang Plot**
+
+Membuat ulang visualisasi dengan menambahkan parameter `text` pada `aes()`
+
+```{r}
+# Please type your code here
+# plot: ggplot2 -> plot1
+plot1 <- ggplot(data = vids_count, aes(x = count, 
+                              y = reorder(category_id, count), # reorder(A, berdasarkan B)
+                              text = label)) + # menambahkan tooltip dari glue
+  geom_col(aes(fill = count)) +
+  scale_fill_gradient(low="red", high="black") +
+  labs(title = "Trending Categories on YouTube US 2017",
+       x = "Video Count",
+       y = NULL) +
+  theme_minimal() +
+  theme(legend.position = "none") 
+
+plot1
+
+```
+
+**3️⃣ Menambahkan Parameter `tooltip = "text"`** pada `ggplotly()`
+
+```{r}
+# Please type your code here
+ggplotly(plot1, tooltip = "text")
+
+```
+
+## 📈 Plot 2: Trending Channel
+
+**🏄 DIVE DEEPER**
+
+Selesaikan plot interaktif di bawah semenarik mungkin sesuai keinginan hatimu!
+
+**Business Question:** Dari kategori video yang Bapak/Ibu sukai, buatlah analisis mengenai Top 10 channel youtube dengan rata-rata jumlah viewers tertinggi!
+
+```{r}
+# Please type your code here
+# Persiapan Data 
+vids_top10 <- vids_top10 %>%
+  mutate(label2 = glue("Channel: {channel_title}
+                       Average Views: {comma(avg_views)}")) #menambahkan koma di label
+vids_top10
+```
+
+```{r}
+# Please type your code here
+# ggplot: lolipop plot
+plot2 <- ggplot(vids_top10,
+                aes(x = avg_views,
+                    y = reorder(channel_title, avg_views),
+                    color = avg_views,
+                    text = label2)) +
+  scale_color_continuous(low = "red",
+                         high = "black") +
+  geom_point(size = 3) + 
+  geom_segment(aes(x = 0,
+                   xend = avg_views,
+                   yend = channel_title),
+               size = 1.5) +
+  scale_x_continuous(labels = comma) +
+  labs(title = "Top 10 Channel on Entertainment",
+       x = "Average View",
+       y = NULL)+
+  theme_minimal()+
+  theme(plot.title = element_text(face="bold"), # menebalkan judul title 
+    legend.position = "none"
+  )
+
+plot2
+```
+
+```{r}
+# Please type your code here
+ggplotly(plot2, tooltip = "text")
+
+```
+
+## 📈 Plot 3: Trending Activity
+
+**Business Question:** Setelah menganalisis tentang channel top 10 dari kategori video yang direkomendasikan, kita ingin melihat aktivitas viewers pada kategori tersebut di tiap `publish_hour`. Tipe plot apa yang baiknya digunakan? Buatkan interactive plotnya.
+
+```{r}
+# Please type your code here
+# Persiapan Data 
+
+vids_trend <- vids_clean %>% 
+  filter(category_id %in% "Entertainment") %>% 
+  group_by(publish_hour) %>% 
+  summarise(mean_views = mean(views)) %>% 
+  ungroup() %>% 
+  arrange(-mean_views) %>% 
+  mutate(label3 = glue("Publish Hour: {publish_hour}
+                       Average Views: {comma(mean_views)}"))
+
+vids_trend
+```
+
+```{r}
+# Please type your code here
+# Visualisasi plot 3 statis
+plot3 <- ggplot(data = vids_trend, 
+                mapping = aes(x = publish_hour, 
+                              y = mean_views)) +
+  geom_line(color = "red") + 
+  geom_point(aes(text = label3)) +
+  
+  scale_y_continuous(labels = comma) +
+  labs(
+    title = "Viewers Activity of Entertainment Video",
+    x = "Publish Hour",
+    y = "Average Views"
+  ) +
+  theme_minimal()
+plot3
+
+```
+
+```{r}
+# Please type your code here
+# buat plot menjadi interaktif dengan menambahkan tooltip
+ggplotly(plot3, tooltip = "text")
+
+```
+
+# Exporting Plots
+
+-   Plot Statis
+    -   ggarrange()
+    -   ggexport()
+-   Plot Interaktif
+    -   Subplot
+    -   Dashboard
+        -   Flexdashboard
+        -   Shiny & Shinydahsboard
+
+# Exporting Plots with `ggpubr`
+
+## `ggarrange()`
+
+Untuk menyusun plot statis ke bentuk pdf.
+
+```{r}
+# run this code
+publicat <- ggarrange(plot1, plot2, plot3,
+                      ncol = 1, 
+                      nrow = 3)
+# print hal 1
+publicat
+```
+
+## `ggexport()`
+
+Export visualisasi dalam ragam file extension. Berikut contoh untuk PDF:
+
+```{r}
+# run this code
+ggexport(publicat, filename="assets/publication_inclass.pdf")
+```
+
+Ke dalam extensi file lain (kebanyakan disimpan per plot nya saja):
+
+-   <https://r-coder.com/save-plot-r/>
+-   <https://www.datanovia.com/en/blog/how-to-save-a-ggplot/>
+
+## `subplot()`
+
+```{r}
+# Please type your code here
+subplot(plot1, plot2, plot3, nrows = 3)
+```
+
+# 📝 Summary PLOT INTERACTIVE
+
+1.  Tahapan Pembuatan plot Interaktif dari ggplot2:
+
+-   siapkan data: ditambahkan kolom untuk tooltip (info yang ingin ditampilkan ketika hover)
+
+<!-- -->
+
+    data <- data %>% 
+     mutate(label = glue("isi tooltip {data}"))
+
+-   buat ggplot, tambahkan aes text ke dalam codingan ggplot, assign ke objek
+
+<!-- -->
+
+    # umumnya di dalam geom
+    plot <- ggplot(data, aes(x = kolom_a, y = kolom_b, text = kolom_tooltip)) +
+      geom_point() + dst...
+
+    # aes text bisa juga ditambahkan di geom, umumnya bila multiple geom
+    plot <- ggplot(data, aes(x = kolom_a, y = kolom_b)) +
+      geom_point(aes(text = kolom_tooltip)) + dst ...
+
+-   buat plotly, atur tooltip agar menggunakan aes text.
+
+<!-- -->
+
+    ggplotly(plot, tooltip = "text")
+
+2.  Exporting plot:
+
+-   `ggarrange()`: menyusun plot statis
+-   `ggexport()`: mengexport plot yg sudah tersusun ke file PDF/dll.
+-   `subplot()`: menyusun plot interaktif
+
+3.  Untuk exporting plot interaktif (ataupun statis) bisa lebih banyak fiturnya bila menggunakan dashboard
+
+# Exporting Plots with Flexdashboard
+
+**Flex Dashboard** merupakan paket R yang berguna untuk membuat dasbor fleksibel, menarik, dan interaktif. Pembuatan dan penyesuaian dasbor dilakukan menggunakan R Markdown dengan format output `flexdashboard::flex_dashboard`.
+
+-   **Langkah membuat file Rmd dengan template** `flexdashboard`:
+    1.  Pilih Menu File \> New File \> R Markdown
+    2.  Pada bagian "From Template", pilih "Flex Dashboard"
+    3.  Klik tombol "OK"
+    4.  Simpan file Rmd dan beri nama file (bisa dengan shortcut CTRL + S)
+
+```{r echo=FALSE, out.width="100%"}
+knitr::include_graphics("assets/flexscreen.png")
+```
+
+-   **Pada bagian YAML, kita biasanya mengatur:**
+    -   `vertical_layout`: fill atau scroll
+    -   `orientation`: columns atau rows
+    -   `theme`: <https://bootswatch.com/>
+    -   Lalu untuk membuat panel baru dalam column atau row, gunakan \### pada baris baru
+-   **Berikut cara mengisi template** `flexdashboard`:
+    -   Code untuk load library, read dan prepare data diletakkan di chunk dengan `include = FALSE` agar tidak tampil.
+    -   Code untuk proses plotting diletakkan di posisi yang bersesuaian. Catatan: tidak perlu memanggil object yang tidak ingin ditampilkan, cukup object dari plot interaktifnya saja.
+-   **Pertimbangan dalam menggunakan** `flexdashboard`:
+    -   Kelebihan: Dengan adanya template, akan mempermudah pembuatan dashboard
+    -   Kekurangan: User belum dapat memberikan input (kecuali mengkombinasikannya dengan `shiny`)
+-   **Referensi:**
+    -   Official documentation: <https://pkgs.rstudio.com/flexdashboard/index.html>
+    -   Detail penggunaan `flexdashboard`: <https://pkgs.rstudio.com/flexdashboard/articles/using.html>
+    -   Layout `flexdashboard`: <https://pkgs.rstudio.com/flexdashboard/articles/layouts.html>
+    -   Theme `flexdashboard`: <https://pkgs.rstudio.com/flexdashboard/articles/theme.html>
+
+# 📊 Plot untuk Flexdashboard
+
+```{r}
+# Import libraries
+library(dplyr)
+library(ggplot2)
+library(ggpubr)
+library(scales)
+library(glue)
+library(plotly)
+library(lubridate)
+
+# Settingan Agar tidak muncul numeric value
+options(scipen = 9999)
+
+# read data
+vids <- read.csv("data_input/youtubetrends.csv",
+                 encoding = "latin1",
+                 stringsAsFactors = TRUE)
+
+# cleansing data
+vids_clean <- vids %>% 
+  # deselect beberapa kolom
+  select(-c(10:12)) %>% 
+  
+  mutate(
+    # mengubah tipe data
+    trending_date = ymd(trending_date),
+    publish_time = ymd_hms(publish_time),
+    title = as.character(title),
+    channel_title = as.character(channel_title), 
+    
+    # menambahkan kolom baru
+    likesp = likes/views,
+    dislikesp = dislikes/views,
+    commentp = comment_count/views
+  )
+
+```
+
+**Plot 1: Trending Categories of YouTube US 2017**
+
+```{r}
+# Please type your code here
+# Preparation data vids_count
+vids_count <- vids_clean %>% 
+  group_by(category_id) %>% 
+  summarise(count = n()) %>% # membuat kolom baru berdasarkan perhitungan frekuensi category_id nya
+  ungroup() %>% 
+  arrange(-count)
+  
+vids_count <- vids_count %>% 
+  mutate(label = glue(
+    "Category: {category_id}
+    Video Count: {count}"
+  ))
+
+# Pembuatan plot statis 1
+plot1 <- ggplot(data = vids_count, aes(x = count, 
+                              y = reorder(category_id, count), # reorder(A, berdasarkan B)
+                              text = label)) + # menambahkan tooltip dari glue
+  geom_col(aes(fill = count)) +
+  scale_fill_gradient(low="red", high="black") +
+  labs(title = "Trending Categories on YouTube US 2017",
+       x = "Video Count",
+       y = NULL) +
+  theme_minimal() +
+  theme(legend.position = "none") 
+
+
+# Pembuatan plot interaktif 1
+ggplotly(plot1, tooltip = "text")
+
+```
+
+**Plot 2: Top 10 Channel on Entertainment**
+
+```{r}
+# Please type your code here
+# Preparation data vids_top10
+vids_top10 <- vids_clean %>% 
+  filter(category_id %in% "Entertainment") %>% 
+  group_by(channel_title) %>% 
+  summarise(avg_views = mean(views)) %>% 
+  ungroup() %>% 
+  arrange(-avg_views) %>% 
+  head(10)
+
+
+vids_top10 <- vids_top10 %>%
+  mutate(label2 = glue("Channel: {channel_title}
+                       Average Views: {comma(avg_views)}")) #menambahkan koma di label
+
+
+
+# Pembuatan plot statis 2
+plot2 <- ggplot(vids_top10,
+                aes(x = avg_views,
+                    y = reorder(channel_title, avg_views),
+                    color = avg_views,
+                    text = label2)) +
+  scale_color_continuous(low = "red",
+                         high = "black") +
+  geom_point(size = 3) + 
+  geom_segment(aes(x = 0,
+                   xend = avg_views,
+                   yend = channel_title),
+               size = 1.5) +
+  scale_x_continuous(labels = comma) +
+  labs(title = "Top 10 Channel on Entertainment",
+       x = "Average View",
+       y = NULL)+
+  theme_minimal()+
+  theme(plot.title = element_text(face="bold"), # menebalkan judul title 
+    legend.position = "none"
+  )
+
+
+# Pembuatan plot interaktif 2
+ggplotly(plot2, tooltip = "text")
+
+
+```
+
+**Plot 3: Viewers Activity of Entertainment Videos**
+
+```{r}
+# Please type your code here
+# Preparation data vids_trend
+vids_trend <- vids_clean %>% 
+  filter(category_id %in% "Entertainment") %>% 
+  group_by(publish_hour) %>% 
+  summarise(mean_views = mean(views)) %>% 
+  ungroup() %>% 
+  arrange(-mean_views) %>% 
+  mutate(label3 = glue("Publish Hour: {publish_hour}
+                       Average Views: {comma(mean_views)}"))
+
+
+# Pembuatan plot statis 3
+plot3 <- ggplot(data = vids_trend, 
+                mapping = aes(x = publish_hour, 
+                              y = mean_views)) +
+  geom_line(color = "red") + 
+  geom_point(aes(text = label3)) +
+  
+  scale_y_continuous(labels = comma) +
+  labs(
+    title = "Viewers Activity of Entertainment Video",
+    x = "Publish Hour",
+    y = "Average Views"
+  ) +
+  theme_minimal()
+
+
+# Pembuatan plot interaktif 2
+ggplotly(plot3, tooltip = "text")
+
+```
+
+# Exporting Plots with Shiny
+
+**Shiny** merupakan packages dari RStudio, yang menyediakan framework aplikasi web untuk membuat aplikasi web interaktif (visualisasi) yang disebut "*Shiny apps*". Kemudahan bekerja dengan Shiny telah mempopulerkannya di antara pengguna R. Aplikasi web ini menampilkan objek R dengan cantik (seperti plot, tabel, dll.) dan juga dapat di-*deploy* untuk memungkinkan diakses oleh siapa saja.
+
+Shiny menyediakan widget yang memungkinkan untuk membangun aplikasi yang elegan dengan sedikit usaha.
+
+Struktur aplikasi **shiny** dasar:
+
+```{r}
+# knitr::include_graphics(path = "assets/shiny architecture.png")
+```
+
+-   *global.R*: Untuk menyiapkan lingkungan aplikasi, misalnya, library, impor data dan persiapan data.
+-   *ui.R*: User Interface (UI) untuk menampilkan input dan output.
+-   *server.R*: Untuk memproses input dari user dan mengubahnya menjadi output.
+
+```{r}
+# install.packages("shinydashboard")
+library(shinydashboard)
+```
+
+**Referensi:**
+
+-   `shiny Cheatsheet`: <https://raw.githubusercontent.com/rstudio/cheatsheets/main/shiny.pdf>
+-   `shiny Gallery`: <https://shiny.rstudio.com/gallery/>
+-   `shiny Input` Gallery: <https://shiny.rstudio.com/gallery/widget-gallery.html>
+-   `shinyWidgets`: <http://shinyapps.dreamrs.fr/shinyWidgets/>
+-   `shinydashboard`: <https://rstudio.github.io/shinydashboard/>
+-   `getstarted` : <https://rstudio.github.io/shinydashboard/structure.html#structure-overview>
+-   `sidebar`: <https://rstudio.github.io/shinydashboard/structure.html#sidebar-menu-items-and-tabs>

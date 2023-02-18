@@ -1,0 +1,4 @@
+"0","glue(""Total Kategori Produk : {length(unique(data$Product))}"")"
+"1","Total Kategori Produk : 6"
+"1","
+"

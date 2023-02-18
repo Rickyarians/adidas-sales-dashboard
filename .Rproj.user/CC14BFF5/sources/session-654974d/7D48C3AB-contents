@@ -1,0 +1,122 @@
+library(shiny)
+
+# Define server logic required to draw a histogram
+function(input, output, session) {
+
+    output$plot1 <- renderPlotly({
+
+      vids_count <- vids_clean %>% 
+        group_by(category_id) %>% 
+        summarise(count = n()) %>% # membuat kolom baru berdasarkan perhitungan frekuensi category_id nya
+        ungroup() %>% 
+        arrange(-count)
+      
+      vids_count <- vids_count %>% 
+        mutate(label = glue(
+          "Category: {category_id}
+           Video Count: {count}"
+        ))
+      
+      # Pembuatan plot statis 1
+      plot1 <- ggplot(data = vids_count, aes(x = count, 
+                                             y = reorder(category_id, count), # reorder(A, berdasarkan B)
+                                             text = label)) + # menambahkan tooltip dari glue
+        geom_col(aes(fill = count)) +
+        scale_fill_gradient(low="red", high="black") +
+        labs(title = "Trending Categories on YouTube US 2017",
+             x = "Video Count",
+             y = NULL) +
+        theme_minimal() +
+        theme(legend.position = "none") 
+      
+      
+      # Pembuatan plot interaktif 1
+      ggplotly(plot1, tooltip = "text")
+    })
+    
+    
+    output$plot2 <- renderPlotly({
+      vids_top10 <- vids_clean %>% 
+        filter(category_id %in% input$select_input) %>% 
+        group_by(channel_title) %>% 
+        summarise(avg_views = mean(views)) %>% 
+        ungroup() %>% 
+        arrange(-avg_views) %>% 
+        head(10)
+      
+      
+      vids_top10 <- vids_top10 %>%
+        mutate(label2 = glue("Channel: {channel_title}
+                       Average Views: {comma(avg_views)}")) #menambahkan koma di label
+      
+      
+      
+      # Pembuatan plot statis 2
+      plot2 <- ggplot(vids_top10,
+                      aes(x = avg_views,
+                          y = reorder(channel_title, avg_views),
+                          color = avg_views,
+                          text = label2)) +
+        scale_color_continuous(low = "red",
+                               high = "black") +
+        geom_point(size = 3) + 
+        geom_segment(aes(x = 0,
+                         xend = avg_views,
+                         yend = channel_title),
+                     size = 1.5) +
+        scale_x_continuous(labels = comma) +
+        labs(title = glue("Top 10 Channel on {input$select_input}"),
+             x = "Average View",
+             y = NULL)+
+        theme_minimal()+
+        theme(plot.title = element_text(face="bold"), # menebalkan judul title 
+              legend.position = "none"
+        )
+      
+      
+      # Pembuatan plot interaktif 2
+      ggplotly(plot2, tooltip = "text")
+      
+    
+    })
+    
+    
+    output$plot3 <- renderPlotly({
+      vids_trend <- vids_clean %>% 
+        filter(category_id %in% input$select_input) %>% 
+        group_by(publish_hour) %>% 
+        summarise(mean_views = mean(views)) %>% 
+        ungroup() %>% 
+        arrange(-mean_views) %>% 
+        mutate(label3 = glue("Publish Hour: {publish_hour}
+                       Average Views: {comma(mean_views)}"))
+      
+      
+      # Pembuatan plot statis 3
+      plot3 <- ggplot(data = vids_trend, 
+                      mapping = aes(x = publish_hour, 
+                                    y = mean_views)) +
+        geom_line(color = "red") + 
+        geom_point(aes(text = label3)) +
+        
+        scale_y_continuous(labels = comma) +
+        labs(
+          title = glue("Viewers Activity of {input$select_input} Video"),
+          x = "Publish Hour",
+          y = "Average Views"
+        ) +
+        theme_minimal()
+      
+      
+      # Pembuatan plot interaktif 2
+      ggplotly(plot3, tooltip = "text")
+    })
+    
+    output$datatable <- DT::renderDataTable({
+      x <- DT::datatable(
+        vids_clean, width = 300,
+        options = list(scrollX = TRUE)
+      )
+      x
+    })
+}

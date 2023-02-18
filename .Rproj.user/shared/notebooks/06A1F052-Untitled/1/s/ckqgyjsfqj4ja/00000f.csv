@@ -1,0 +1,7 @@
+"0","# Perubahan tipe data ke factor"
+"0","data$Retailer <- factor(data$Retailer)"
+"0","data$`Sales Method` <- factor(data$`Sales Method`)"
+"0","data$Region <- factor(data$Region)"
+"0","data$State <- factor(data$State)"
+"0","data$City <- factor(data$City)"
+"0","data$City <- factor(data$Product)"
