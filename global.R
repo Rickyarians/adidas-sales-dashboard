@@ -1,5 +1,5 @@
-library(shinydashboard)
 library(shiny)
+library(shinydashboard)
 library(DT)
 # Import libraries
 library(dplyr)
@@ -20,7 +20,7 @@ options(scipen = 9999)
 # read data
 data <- read_excel('assets/Adidas US Sales Datasets.xlsx', skip = 2)
 states <- geojsonio::geojson_read("https://rstudio.github.io/leaflet/json/us-states.geojson", what = "sp")
-data_map <- merge(x = data, y= states, by.x = 'State', by.y = 'name')
+data <- merge(x = data, y= states, by.x = 'State', by.y = 'name')
 
 # cleansing data
 data$Retailer <- factor(data$Retailer)
